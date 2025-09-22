@@ -4,6 +4,11 @@
 
 ## AWS Data Flow & Infrastructure
 
+- s3 bucket as main repository for all documents
+- PDF upload to s3 triggers the lambda_pdf_function, which uses textract to extract text from PDF, store the raw text in RDS, embed the text using bedrock, and store the embeddings in OpenSearch.
+- CSV and JSON uploads to s3 trigger the lambda_structured function.
+- Next steps include: Finishing glue crawler to catalog and discover shcemas of the ingested files, creating glue transform to run ETL jobs, creating redshift, and connect Quicksight to Redhsift.
+
 ## Lambda Functions
 ### Lambda PDF Ingestion Function
 
@@ -235,12 +240,4 @@ aws lambda invoke \
   out.json >/dev/null
 
 cat out.json | python -m json.tool
-```
-
-### Using OpenSearch for Semantic Search in Dashboard:
-
-Access the Dashboard via: https://search-capstone-search-fuf3cm3m5r2g5toavlpsuoj2be.us-east-1.es.amazonaws.com/_dashboards 
-
-```bash
-
 ```
