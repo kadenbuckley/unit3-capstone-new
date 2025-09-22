@@ -1,0 +1,27 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "UpdateSpecificDomain",
+      "Effect": "Allow",
+      "Action": [
+        "es:UpdateDomainConfig",
+        "es:UpdateElasticsearchDomainConfig"
+      ],
+      "Resource": "arn:aws:es:us-east-1:564045267362:domain/capstone-search"
+    },
+    {
+      "Sid": "DescribeAndList",
+      "Effect": "Allow",
+      "Action": [
+        "es:DescribeDomain",
+        "es:DescribeDomainConfig",
+        "es:DescribeElasticsearchDomain",
+        "es:DescribeElasticsearchDomainConfig",
+        "es:DescribeDomainChangeProgress",
+        "es:ListDomainNames"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

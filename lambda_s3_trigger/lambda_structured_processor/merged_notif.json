@@ -1,0 +1,31 @@
+{
+  "LambdaFunctionConfigurations": [
+    {
+      "Id": "csv-orchestrator",
+      "LambdaFunctionArn": "arn:aws:lambda:us-east-1:564045267362:function:lambda-structured-orchestrator",
+      "Events": ["s3:ObjectCreated:*"],
+      "Filter": { "Key": { "FilterRules": [
+        { "Name": "prefix", "Value": "incoming/csv/" },
+        { "Name": "suffix", "Value": ".csv" }
+      ]}}
+    },
+    {
+      "Id": "json-orchestrator",
+      "LambdaFunctionArn": "arn:aws:lambda:us-east-1:564045267362:function:lambda-structured-orchestrator",
+      "Events": ["s3:ObjectCreated:*"],
+      "Filter": { "Key": { "FilterRules": [
+        { "Name": "prefix", "Value": "incoming/json/" },
+        { "Name": "suffix", "Value": ".json" }
+      ]}}
+    },
+    {
+      "Id": "pdf-orchestrator",
+      "LambdaFunctionArn": "arn:aws:lambda:us-east-1:564045267362:function:lambda_pdf_function",
+      "Events": ["s3:ObjectCreated:*"],
+      "Filter": { "Key": { "FilterRules": [
+        { "Name": "prefix", "Value": "incoming/pdf/" },
+        { "Name": "suffix", "Value": ".pdf" }
+      ]}}
+    }
+  ]
+}

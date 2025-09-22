@@ -1,0 +1,12 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowLambdaRole",
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::564045267362:role/lambda_pdf_function-role" },
+      "Action": "es:ESHttp*",
+      "Resource": "arn:aws:es:us-east-1:564045267362:domain/capstone-search/*"
+    }
+  ]
+}

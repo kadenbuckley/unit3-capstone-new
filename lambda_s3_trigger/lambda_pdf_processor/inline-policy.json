@@ -1,0 +1,7 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    { "Effect": "Allow", "Action": ["s3:GetObject"], "Resource": "arn:aws:s3:::unit3-capstone-564045267362-us-east-1-1758321354/*" },
+    { "Effect": "Allow", "Action": ["textract:StartDocumentTextDetection","textract:GetDocumentTextDetection"], "Resource": "*" }
+  ]
+}

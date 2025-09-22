@@ -1,0 +1,20 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowLambdaIngestAndSearch",
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::564045267362ole/lambda_pdf_function-role" },
+      "Action": "es:ESHttp*",
+      "Resource": "arn:aws:es:us-east-1:564045267362:domain/capstone-search/*"
+    },
+    {
+      "Sid": "AllowDashboardsFromMyIP",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "es:ESHttp*",
+      "Resource": "arn:aws:es:us-east-1:564045267362:domain/capstone-search/*",
+      "Condition": { "IpAddress": { "aws:SourceIp": ["73.223.114.38/32"] } }
+    }
+  ]
+}

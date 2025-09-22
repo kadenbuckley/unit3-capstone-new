@@ -1,0 +1,25 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+env/
+
+# macOS
+.DS_Store
+
+# Lambda build artifacts
+function.zip
+build/
+dist/
+*.log
+
+# IDE/project
+.vscode/
+.idea/
+
+# Secrets & env files
+.env
+*.env
+env.json
+*.env.json
+*.tfvars

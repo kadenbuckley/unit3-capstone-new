@@ -1,0 +1,31 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Sid": "S3Access",
+        "Effect": "Allow",
+        "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket", "s3:CopyObject"],
+        "Resource": [
+          "arn:aws:s3:::unit3-capstone-564045267362-us-east-1-1758321354",
+          "arn:aws:s3:::unit3-capstone-564045267362-us-east-1-1758321354/*"
+        ]
+      },
+      {
+        "Sid": "GlueKickoff",
+        "Effect": "Allow",
+        "Action": [
+          "glue:StartJobRun",
+          "glue:GetJobRun",
+          "glue:StartCrawler"
+        ],
+        "Resource": "*"
+      },
+      {
+        "Sid": "Logs",
+        "Effect": "Allow",
+        "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
+        "Resource": "*"
+      }
+    ]
+  }
+  
