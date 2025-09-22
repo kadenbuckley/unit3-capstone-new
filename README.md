@@ -4,9 +4,6 @@
 
 ## AWS Data Flow & Infrastructure
 
-
-
-
 ## Lambda Functions
 ### Lambda PDF Ingestion Function
 

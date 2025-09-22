@@ -1,14 +1,3 @@
-"""
-Create (or reuse) a PostgreSQL RDS instance suitable for the capstone project,
-open inbound PostgreSQL to your current public IP, and create the required tables.
-
-- Instance: db.t4g.micro, Postgres, 20 GB, PubliclyAccessible (dev/demo)
-- Tables: documents, doc_chunks
-
-Usage:
-  python rds_setup.py
-"""
-
 import os
 import time
 import json
@@ -20,19 +9,18 @@ from botocore.exceptions import ClientError, WaiterError
 db_identifier = os.getenv("DB_IDENTIFIER", "my-postgres-db")
 db_name       = os.getenv("DB_NAME",       "capstone")
 db_user       = os.getenv("DB_USER",       "dbadmin")
-db_password   = os.getenv("DB_PASSWORD",   "myStrongPassword123!")  # dev only; rotate later
+db_password   = os.getenv("DB_PASSWORD",   "myStrongPassword123!")
 db_class      = os.getenv("DB_CLASS",      "db.t4g.micro")
 db_storage_gb = int(os.getenv("DB_STORAGE_GB", "20"))
 db_port       = int(os.getenv("DB_PORT", "5432"))
-publicly_accessible = True  # dev/demo; prefer private + VPC Lambda in prod
-backup_retention_days = 1   # small daily snapshot; set 0 to disable
-storage_type = os.getenv("DB_STORAGE_TYPE", "gp3")  # gp2/gp3; gp3 is modern & cost-effective
+publicly_accessible = True
+backup_retention_days = 1
+storage_type = os.getenv("DB_STORAGE_TYPE", "gp3")
 
-region = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")  # rely on profile/ENV
+region = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
 
 rds = boto3.client("rds", region_name=region)
 ec2 = boto3.client("ec2", region_name=region)
-
 
 def get_my_ip():
     """Return caller public IP (str) or None if lookup fails."""

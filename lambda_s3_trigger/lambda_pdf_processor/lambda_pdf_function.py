@@ -4,11 +4,9 @@ import json as _json
 import requests
 from requests_aws4auth import AWS4Auth
 
-# ---------- logging ----------
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# ---------- AWS clients & constants ----------
 REGION = os.getenv("AWS_REGION", "us-east-1")
 
 s3 = boto3.client("s3", region_name=REGION)
@@ -16,10 +14,9 @@ textract = boto3.client("textract", region_name=REGION)
 
 bedrock = boto3.client("bedrock-runtime", region_name=REGION)
 MODEL_ID = "amazon.titan-embed-text-v2:0"
-EMBED_DIM = 1024  # (for later OpenSearch index dimension)
+EMBED_DIM = 1024
 
 def _os_auth():
-    # Use the Lambda role creds to sign requests (SigV4)
     session = boto3.Session()
     creds = session.get_credentials().get_frozen_credentials()
     return AWS4Auth(creds.access_key, creds.secret_key, REGION, "es", session_token=creds.token)
@@ -61,7 +58,6 @@ def _os_ensure_index(index_name: str, dim: int):
             put.raise_for_status()
             logger.info(f"[os] created index {index_name}")
             return True
-        # Any other code: treat as not ready yet
         logger.warning(f"[os] HEAD index returned {r.status_code}: {r.text[:200]}")
         return False
     except Exception as e:
@@ -79,7 +75,6 @@ def os_index_chunks(index_name: str, s3_uri: str, doc_id: int, chunks: list[str]
         return
 
     try:
-        # Build NDJSON bulk body
         lines = []
         for i, (text, vec) in enumerate(zip(chunks, vectors)):
             lines.append(_json.dumps({"index": {"_index": index_name}}))
@@ -105,7 +100,6 @@ def os_index_chunks(index_name: str, s3_uri: str, doc_id: int, chunks: list[str]
     except Exception as e:
         logger.exception(f"[os] index error: {e}")
 
-# ---------- DB (pg8000) ----------
 from pg8000.native import Connection as PGConnection
 
 def _db_conn():
@@ -121,7 +115,6 @@ def _db_conn():
 def store_document_and_chunks(s3_uri: str, chunks: list[str], title: str | None = None) -> int:
     conn = _db_conn()
     try:
-        # Insert the document and get its id
         [row] = conn.run(
             "INSERT INTO documents (s3_uri, title) "
             "VALUES (:s3, :t) "
@@ -131,7 +124,6 @@ def store_document_and_chunks(s3_uri: str, chunks: list[str], title: str | None 
         )
         doc_id = row[0]
 
-        # Insert chunks
         offset = 0
         for i, c in enumerate(chunks):
             start = offset
@@ -150,7 +142,7 @@ def store_document_and_chunks(s3_uri: str, chunks: list[str], title: str | None 
         except Exception:
             pass
 
-# ---------- Embeddings ----------
+# embeding funcs
 def embed_text(text: str) -> list[float]:
     payload = {"inputText": text}
     resp = bedrock.invoke_model(
@@ -162,7 +154,7 @@ def embed_text(text: str) -> list[float]:
     body = json.loads(resp["body"].read().decode("utf-8"))
     return body["embedding"]
 
-# ---------- Chunking helpers ----------
+# Chunking funcs
 def _split_paragraphs(text: str) -> list[str]:
     parts = re.split(r"\n{2,}", text.strip())
     return [p.strip() for p in parts if p.strip()]
@@ -178,7 +170,6 @@ def _chunk_text(text: str,
         if len(cur) + len(p) <= target_chars:
             cur += p
         elif len(p) > max_chars:
-            # hard split long paragraph
             for i in range(0, len(p), target_chars):
                 piece = p[i:i+target_chars]
                 if cur:
@@ -186,7 +177,6 @@ def _chunk_text(text: str,
                     cur = ""
                 chunks.append(piece)
         else:
-            # close current chunk (with overlap)
             if cur:
                 chunks.append(cur)
                 cur = cur[max(0, len(cur)-overlap_chars):]
@@ -195,7 +185,7 @@ def _chunk_text(text: str,
         chunks.append(cur[:max_chars])
     return chunks
 
-# ---------- Textract ----------
+# Textract
 def _textract_text(bucket: str, key: str) -> str:
     head = s3.head_object(Bucket=bucket, Key=key)
     logger.info(f"[head_object] Bucket={bucket} Key={key} "
@@ -229,7 +219,7 @@ def _textract_text(bucket: str, key: str) -> str:
     lines = [b["Text"] for b in blocks if b.get("BlockType") == "LINE" and "Text" in b]
     return "\n".join(lines)
 
-# ---------- Handler ----------
+# Lambda handler
 def lambda_handler(event, context):
     try:
         rec = event["Records"][0]
@@ -242,26 +232,26 @@ def lambda_handler(event, context):
         if not key.lower().endswith(".pdf"):
             return {"skip": True, "reason": "not a PDF", "key": key}
 
-        # 1) Extract text
+        # Extract text
         text = _textract_text(bucket, key)
         logger.info(f"[pdf_ingest] {bucket}/{key} chars={len(text)}")
 
-        # 2) Chunk
+        # Chunk
         chunks = _chunk_text(text)
         logger.info(f"[chunk] n={len(chunks)} sizes={[len(c) for c in chunks[:5]]}")
 
-        # 3) Embed (kept for later OpenSearch use)
+        # Embed
         vectors = []
         for c in chunks:
             vectors.append(embed_text(c))
         logger.info(f"[embed] n={len(vectors)} dim={len(vectors[0]) if vectors else 0}")
 
-        # 4) Store raw text chunks in RDS
+        # Store raw text chunks in RDS
         s3_uri = f"s3://{bucket}/{key}"
         doc_id = store_document_and_chunks(s3_uri, chunks)
         logger.info(f"[rds] stored doc_id={doc_id} chunks={len(chunks)}")
 
-        # 5. Send to OpenSearch (no-op until endpoint is ready / env set)
+        # Send to OpenSearch
         os_index_chunks(os.environ.get("OS_INDEX", "pdf-chunks"), s3_uri, doc_id, chunks, vectors)
 
         return {

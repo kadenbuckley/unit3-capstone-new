@@ -1,4 +1,3 @@
-# lambda_structured_function.py
 import os
 import re
 import json
@@ -11,31 +10,14 @@ from botocore.exceptions import ClientError
 s3   = boto3.client("s3")
 glue = boto3.client("glue")
 
-# ====== Config via environment variables ======
-# Name of your Glue ETL job that cleans and loads to Redshift
 GLUE_JOB_NAME = os.environ.get("GLUE_JOB_NAME", "capstone-structured-etl")
-
-# Optional: a single, global crawler you created that points to staging/
-# If you manage crawlers per dataset, set this empty and the code will try "crawler-<dataset>"
-GLUE_CRAWLER_NAME = os.environ.get("GLUE_CRAWLER_NAME", "")  # e.g., "capstone-staging-crawler"
-
-# Bucket that holds incoming/staging/processed/errors (same as PDFs is fine)
-BUCKET = os.environ["DATA_BUCKET"]  # required
-
-# Where to write curated output (Parquet/CSV) before loading to Redshift
+GLUE_CRAWLER_NAME = os.environ.get("GLUE_CRAWLER_NAME", "")
+BUCKET = os.environ["DATA_BUCKET"]
 OUTPUT_ROOT = os.environ.get("OUTPUT_ROOT", "processed/structured")
-
-# Where to stage incoming CSV/JSON before ETL
 STAGING_ROOT = os.environ.get("STAGING_ROOT", "staging/structured")
-
-# Where to place bad files and error copies
 ERROR_ROOT = os.environ.get("ERROR_ROOT", "errors/structured")
-
-# Toggle whether to attempt starting a Glue crawler
 ENABLE_CRAWLER = os.environ.get("ENABLE_CRAWLER", "true").lower() == "true"
 
-
-# ====== Helpers ======
 _VALID_EXT = (".csv", ".json")
 
 def _today_yyyy_mm_dd() -> str:
@@ -48,12 +30,8 @@ def _dataset_from_key(key: str) -> str:
     incoming/json/Orders.json             -> 'orders'
     """
     base = os.path.basename(key)
-    # split on first separator among _ - .
-    # e.g., "customers_2025-09-22.csv" -> ["customers", "2025-09-22.csv"]
     m = re.split(r"[_\-.]", base, maxsplit=1)
-    # if no separator, drop extension
     ds = (m[0] if m and m[0] else os.path.splitext(base)[0]).strip().lower()
-    # keep dataset simple (letters, numbers, underscores)
     ds = re.sub(r"[^a-z0-9_]+", "_", ds)
     return ds or "dataset"
 
@@ -79,7 +57,6 @@ def _move_to_errors(src_bucket: str, src_key: str, reason: str):
     print(f"[ERROR] moved to {err_key} because: {reason}")
 
 def _start_crawler(dataset: str):
-    # Prefer env crawler name, else a per-dataset convention
     name = GLUE_CRAWLER_NAME or f"crawler-{dataset}"
     try:
         glue.start_crawler(Name=name)
@@ -96,14 +73,14 @@ def _start_glue_job(dataset: str, staging_prefix: str, output_prefix: str):
         "--dataset": dataset,
         "--staging_path": f"s3://{BUCKET}/{staging_prefix}",
         "--output_path":  f"s3://{BUCKET}/{output_prefix}",
-        "--redshift_table": dataset,   # keep 1:1 table name to dataset
-        "--load_mode": "append",       # or "upsert" if you implement it
+        "--redshift_table": dataset,   
+        "--load_mode": "append",
     }
     resp = glue.start_job_run(JobName=GLUE_JOB_NAME, Arguments=args)
     print(f"[INFO] started glue job {GLUE_JOB_NAME}, runId={resp['JobRunId']}")
     return resp["JobRunId"]
 
-# ====== Lambda Handler ======
+# Lambda handler
 def lambda_handler(event, context):
     """
     S3 event -> move incoming file to staging -> (optional) crawler -> ETL job.
@@ -125,16 +102,14 @@ def lambda_handler(event, context):
             ingest_date = _today_yyyy_mm_dd()
             dest_key = f"{STAGING_ROOT}/{dataset}/ingest_date={ingest_date}/{os.path.basename(src_key)}"
 
-            # 1) Move to staging
             print(f"[INFO] staging {src_key} -> {dest_key}")
             _copy_then_delete(BUCKET, src_key, BUCKET, dest_key)
 
-            # 2) Optional: kick crawler
+
             if ENABLE_CRAWLER:
                 _start_crawler(dataset)
 
-            # 3) Start Glue job
-            staging_prefix = f"{STAGING_ROOT}/{dataset}/"    # job should read all ingested files for this dataset
+            staging_prefix = f"{STAGING_ROOT}/{dataset}/"
             output_prefix  = f"{OUTPUT_ROOT}/{dataset}/"
             run_id = _start_glue_job(dataset, staging_prefix, output_prefix)
 
@@ -147,12 +122,12 @@ def lambda_handler(event, context):
             }))
 
         except Exception as e:
-            # Safety net: try to push the file to errors if we know it
+
             try:
                 if "src_key" in locals() and src_key:
                     _move_to_errors(BUCKET, src_key, reason=str(e))
             except Exception as move_err:
                 print(f"[FATAL] could not move to errors: {move_err}")
-            raise  # rethrow so the failure is visible in CloudWatch/metrics
+            raise 
 
     return {"ok": True}

@@ -2,7 +2,7 @@
 
 import boto3, botocore, time, re
 
-# ----- Config -----
+# config
 REGION = "us-east-1"
 BUCKET_NAME = "unit3-capstone"
 
@@ -31,7 +31,6 @@ def ensure_bucket(bucket: str) -> str:
     print(f"✅ created bucket: s3://{bucket}")
     return bucket
 
-# ---------- main ----------
 def main():
     bucket = ensure_bucket(make_bucket_name(BUCKET_NAME))
 
